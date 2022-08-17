@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <script src="sdk/node_modules/vss-web-extension-sdk/lib/VSS.SDK.min.js"></script>
+            <script type="text/javascript">
+                
+                //change this for your own project and team
+                const team = "('[Agile]\\Agile Team')";
+
+                //calculates the predictability based on 2 inputs (planned story points and closed/completed story points)
+                function predictability(x, y) {
+                    var z = x/y*100;
+                    z = z.toFixed(2);
+                    return z;
+                }
+
+                //public variables getting updated with data from REST Calls
+                var plannedStoryPoints = 0;
+                var closedStoryPoints = 0;
+
+                //there are 3 containers, 1 equals the sum of planned story points, 2 equals the sum of closed story points and 3 equals the predictability
+                function addElement(value, i){
+                    if (i==1){
+                        var elem = document.getElementById("container1");
+                    }
+                    else if(i==2){
+                        var elem = document.getElementById("container2");
+                    }
+                    else if(i==3){
+                        var elem = document.getElementById("container3");
+                    }
+                    var parent = elem.parentNode;
+                    var item = document.createElement("li");
+                    item.style.color = "#0078d4";
+                    var text = document.createTextNode(value);
+                    item.appendChild(text);
+                    parent.replaceChild(item, elem);
+                }
+
+                //functions for updating the public variables
+                function savePlannedSP(value){
+                    plannedStoryPoints = value;
+                }
+
+                function saveClosedSP(value){
+                    closedStoryPoints = value;
+                }
+                
+                //evaluation adds the public variables and predictability to the DOM with the addElement function
+                function evaluation(){
+                    addElement(plannedStoryPoints, 1);
+                    addElement(closedStoryPoints, 2);
+                    addElement(predictability(closedStoryPoints, plannedStoryPoints) + '%', 3);
+                }
+
+                //functions for REST calls
+                function getPlannedSP(witClient, fields, projectId, asOfDateSprintStart,asOfDateSprintFinish){
+                    var spPlanned = 0;
+                    //loop for getting the story points of the last 4 iterations
+                    for(var i = 1; i<5; i++){
+                        witClient.queryByWiql({query: "SELECT [System.Id] FROM WorkItem WHERE [System.WorkItemType] IN ('User Story', 'Bug') AND [System.IterationPath] = @currentIteration" + team + -i +" Asof '" + asOfDateSprintStart + "'"}, projectId).then(
+                        function (result) {
+                            // Generate an array of all work item ID's
+                            var openWorkItems = result.workItems.map(function (wi) { return wi.id });
+                        
+                            witClient.getWorkItems(openWorkItems, fields).then(function (workItems) {
+                                //Go through all work items and add up the storypoints
+                                workItems.map(function (w) {
+                                    spPlanned = spPlanned + w.fields["Microsoft.VSTS.Scheduling.StoryPoints"];
+                                });
+                                //save the story points of this iteration
+                                savePlannedSP(spPlanned);
+                            });
+                        });
+                    }
+                }
+
+                function getClosedSP(witClient, fields, projectId, asOfDateSprintStart, asOfDateSprintFinish){
+                    var spClosed = 0;
+                    //loop for getting the story points of the last 4 iterations
+                    for(var i = 1; i < 5; i++){
+                        witClient.queryByWiql({query: "SELECT [System.Id] FROM WorkItem WHERE [System.WorkItemType] IN ('User Story', 'Bug') AND [System.State] IN ('Closed') AND [System.IterationPath] = @currentIteration" + team + -i +" Asof '" + asOfDateSprintFinish + "'"}, projectId).then(
+                        function (result) {
+                            // Generate an array of all work item ID's
+                            var openWorkItems = result.workItems.map(function (wi) { return wi.id });
+                                
+                            witClient.getWorkItems(openWorkItems, fields).then(function (workItems) {
+                                //Go through all work items and add up the storypoints
+                                workItems.map(function (w) {
+                                    spClosed = spClosed + w.fields["Microsoft.VSTS.Scheduling.StoryPoints"];
+                                    console.log(w.fields);
+                                });
+                                //save the story points of this iteration
+                                saveClosedSP(spClosed);
+                            });
+                        });
+                    }
+                }
+
+                //setup for access to ADO database
+                VSS.init({                        
+                    explicitNotifyLoaded: true,
+                    usePlatformStyles: true
+                });
+
+                VSS.require(["VSS/Service", "TFS/Dashboards/WidgetHelpers", "TFS/WorkItemTracking/RestClient"], function(VSS_Service, WidgetHelpers, TFS_Wit_WebApi) {
+                    VSS.register("test-widget", function() {
+                        return {
+                            load: function (widgetSettings) {
+                                
+                                var projectId = VSS.getWebContext().project.id;
+
+                                //not really needed right now
+                                //explanation: for a real predictability you have to count the planned work items on the day the iteration starts
+                                //right now I didnt find a solution for getting this date
+                                //then there is the date of the sprint finish, so you could save the ids of the planned work items
+                                //and save count the story points of those being finished on the day when the sprint is finished
+                                //with the "ASOF" operator in the REST call you can access the state of work items on this particular day
+                                //for testing purposes this implementation is currently like that
+                                //for the real predictability you cant use the 2 for loops in the functions because you have to
+                                //enter different dates for every iteration and probably send rest calls to get the dates before counting the story points
+                                var asOfDateSprintStart = "07/30/2022";
+                                var asOfDateSprintFinish = "07/30/2022";
+                                
+                                var witClient = VSS_Service.getCollectionClient(TFS_Wit_WebApi.WorkItemTrackingHttpClient);
+                                
+                                var fields = [
+                                "Microsoft.VSTS.Scheduling.StoryPoints"
+                                ];
+                                
+                                getPlannedSP(witClient, fields, projectId, asOfDateSprintStart, asOfDateSprintFinish);
+                                getClosedSP(witClient, fields, projectId, asOfDateSprintStart, asOfDateSprintFinish);
+
+                                //currently manual timeout between getting the data from the REST call and the evaluation, not pretty but works for first concept
+                                setTimeout((function(){
+                                    evaluation();
+                                }), 2000);
+
+                                return WidgetHelpers.WidgetStatusHelper.Success();
+                            }
+                        }
+                    })
+                    VSS.notifyLoadSucceeded();
+                })
+            </script>
+        </head>
+        <body style="margin: 10px; font-size: large;">
+            <div class="widget">
+                <div style="font-size: 1rem; font-weight: normal;">Predictability</div>
+                <div style="font-size: .75rem; color: rgba(0,0,0,.55);">Last 4 iterations</div>
+                <ul style="text-align: center; list-style-type: none;">
+                    <li>Planned Story Points</li>
+                    <li id="container1" style="color: #0078d4;">Loading</li>
+                    <li>Completed Story Points</li>
+                    <li id="container2" style="color: #0078d4;">Loading</li>
+                    <li>Predictability</li>
+                    <li id="container3" style="color: #0078d4;">Loading</li>
+                </ul>
+            </div>
+        </body>
+    </html>

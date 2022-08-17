@@ -1,0 +1,57 @@
+{
+    "manifestVersion": 1,
+    "id": "test-widget",
+    "version": "1.0.0",
+    "name": "Predictability Widget",
+    "description": "Displays your team predictability based on planned and completed story points of the last four iterations.",
+    "publisher": "Rittmann",
+    "categories": ["Azure Boards"],
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "icons": {
+        "default": "img/logo.png"
+    },
+    "contributions": [
+        {
+            "id": "test-widget",
+            "type": "ms.vss-dashboards-web.widget",
+            "targets": [
+                "ms.vss-dashboards-web.widget-catalog"
+            ],
+            "properties": {
+                "name": "Predictability Widget",
+                "description": "Displays your team predictability based on planned and completed story points of the last four iterations.",
+                "catalogIconUrl": "img/CatalogIcon.png",
+                "previewImageUrl": "img/preview.png",                            
+                "uri": "predictability.html",
+                "supportedSizes": [
+                    {
+                            "rowSpan": 2,
+                            "columnSpan": 2
+                        }
+                    ],
+                "supportedScopes": ["project_team"]
+            }
+        }
+    ],
+    "files": [
+        {
+            "path": "predictability.html", "addressable": true
+        },
+        {
+            "path": "sdk/node_modules/vss-web-extension-sdk/lib/", "addressable": true
+        },
+        {
+            "path": "img", "addressable": true
+        },
+        {
+            "path": "scripts", "addressable": true
+        }
+    ],
+    "scopes": [
+        "vso.work"
+    ]
+}
