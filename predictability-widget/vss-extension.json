@@ -46,9 +46,6 @@
         },
         {
             "path": "img", "addressable": true
-        },
-        {
-            "path": "scripts", "addressable": true
         }
     ],
     "scopes": [
