@@ -1,6 +1,6 @@
 {
     "manifestVersion": 1,
-    "id": "test-widget",
+    "id": "predictability-widget",
     "version": "1.0.0",
     "name": "Predictability Widget",
     "description": "Displays your team predictability based on planned and completed story points of the last four iterations.",
@@ -16,7 +16,7 @@
     },
     "contributions": [
         {
-            "id": "test-widget",
+            "id": "predictability-widget",
             "type": "ms.vss-dashboards-web.widget",
             "targets": [
                 "ms.vss-dashboards-web.widget-catalog"
